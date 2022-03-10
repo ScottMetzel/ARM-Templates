@@ -1,0 +1,81 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "DeploymentEnvironment": {
+            "value": "Dev"
+        },
+        "BaseName": {
+            "value": "## TO BE DEFINED ##"
+        },
+        "BaseSequenceNumber": {
+            "value": 1
+        },
+        "AutoscaleMin": {
+            "value": 2
+        },
+        "AutoscaleMax": {
+            "value": 5
+        },
+        "InstanceSize": {
+            "value": "Standard_F4s_v2"
+        },
+        "OSDiskSize": {
+            "value": 128
+        },
+        "OSDiskType": {
+            "value": "Standard_LRS"
+        },
+        "OSImageSKU": {
+            "value": "2022-datacenter-azure-edition-core"
+        },
+        "AdminUserName": {
+            "value": "## TO BE DEFINED ##"
+        },
+        "AdminPassword": {
+            "value": "## TO BE DEFINED ##"
+        },
+        "StorageAccountName": {
+            "value": "## TO BE DEFINED ##"
+        },
+        "DeployNewStorageAccount": {
+            "value": false
+        },
+        "HybridUseBenefit": {
+            "value": false
+        },
+        "NTPServerSource": {
+            "value": "Default"
+        },
+        "NTPServerAddresses": {
+            "value": "## TO BE DEFINED ##"
+        },
+        "WorkspaceResourceId": {
+            "value": ""
+        },
+        "VNetResourceID": {
+            "value": "## TO BE DEFINED ##"
+        },
+        "LBSubnetName": {
+            "value": "## TO BE DEFINED ##"
+        },
+        "VMSSSubnetName": {
+            "value": "## TO BE DEFINED ##"
+        },
+        "LoadBalancerAccessibility": {
+            "value": "Internal"
+        },
+        "LoadBalancerFrontendIPIsStatic": {
+            "value": true
+        },
+        "LoadBalancerFrontendPrivateStaticIPAddress": {
+            "value": ""
+        },
+        "DeployLoadBalancerDiagnostics": {
+            "value": false
+        },
+        "AddCustomScriptExtension": {
+            "value": true
+        }
+    }
+}

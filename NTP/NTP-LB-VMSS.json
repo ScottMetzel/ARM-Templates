@@ -1,0 +1,704 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "DeploymentEnvironment": {
+            "type": "string",
+            "defaultValue": "Dev",
+            "allowedValues": [
+                "Dev",
+                "Test",
+                "Stage",
+                "Prod"
+            ],
+            "metadata": {
+                "description": "The deployment environment which Azure resources will be deployed in."
+            }
+        },
+        "BaseName": {
+            "type": "string",
+            "metadata": {
+                "description": "The base name for the VM Scale Set. The VMSS name will be set to the value of this parameter plus '-vmss'."
+            }
+        },
+        "BaseSequenceNumber": {
+            "type": "int",
+            "defaultValue": 1,
+            "minValue": 1,
+            "maxValue": 999,
+            "metadata": {
+                "description": "The base sequence number for all resources to create."
+            }
+        },
+        "AutoscaleMin": {
+            "type": "int",
+            "defaultValue": 2,
+            "minValue": 2,
+            "metadata": {
+                "description": "The minimum number of autoscale instances."
+            }
+        },
+        "AutoscaleMax": {
+            "type": "int",
+            "defaultValue": 5,
+            "maxValue": 10,
+            "metadata": {
+                "description": "The maximum number of autoscale instances."
+            }
+        },
+        "InstanceSize": {
+            "type": "string",
+            "defaultValue": "Standard_F4s_v2",
+            "allowedValues": [
+                "Standard_F4s_v2",
+                "Standard_B2s",
+                "Standard_D2ds_v5",
+                "Standard_D8ds_v5"
+            ],
+            "metadata": {
+                "description": "The VM / instance size to use for the scale set instances."
+            }
+        },
+        "OSDiskSize": {
+            "type": "int",
+            "defaultValue": 128,
+            "allowedValues": [
+                64,
+                128,
+                256,
+                512,
+                1024,
+                2048,
+                4096,
+                8192,
+                16384,
+                32767
+            ],
+            "metadata": {
+                "description": "(Optional) Managed Disk Size for the Operating System (c Drive) Disk for the DataStore tier of Virtual Machines"
+            }
+        },
+        "OSDiskType": {
+            "type": "string",
+            "defaultValue": "Standard_LRS",
+            "allowedValues": [
+                "Premium_LRS",
+                "Premium_ZRS",
+                "StandardSSD_LRS",
+                "StandardSSD_ZRS",
+                "Standard_LRS",
+                "UltraSSD_LRS"
+            ],
+            "metadata": {
+                "description": "The SKU for the OS disk."
+            }
+        },
+        "OSImageSKU": {
+            "type": "string",
+            "allowedValues": [
+                "2019-datacenter-core-g2",
+                "2019-datacenter-gensecond",
+                "2022-datacenter-core-g2",
+                "2022-datacenter-g2",
+                "2022-datacenter-azure-edition",
+                "2022-datacenter-azure-edition-core",
+                "2022-datacenter-azure-edition-core-smalldisk",
+                "2022-datacenter-azure-edition-smalldisk"
+            ],
+            "defaultValue": "2022-datacenter-azure-edition-core"
+        },
+        "AdminUserName": {
+            "type": "string",
+            "metadata": {
+                "description": "The administrative username for the scale set instances."
+            }
+        },
+        "AdminPassword": {
+            "type": "securestring",
+            "metadata": {
+                "description": "The administrative password for the scale set instances."
+            }
+        },
+        "StorageAccountName": {
+            "type": "string",
+            "metadata": {
+                "description": "The name of the storage account used for boot diagnostics in the VMSS."
+            }
+        },
+        "DeployNewStorageAccount": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Indicates whether a new storage account, used for boot diagnostics in the VMSS, is deployed."
+            }
+        },
+        "HybridUseBenefit": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Indicates the VMSS should leverage the Azure Hybrid Benefit."
+            }
+        },
+        "NTPServerSource": {
+            "type": "string",
+            "defaultValue": "Default",
+            "allowedValues": [
+                "Default",
+                "HostOnly",
+                "External"
+            ]
+        },
+        "NTPServerAddresses": {
+            "type": "string",
+            "metadata": {
+                "description": "The addresses (IPs or FQDNs) of the NTP server(s) to use if the parameter 'NTPServerSource' is set to 'Specified' or 'Both'."
+            }
+        },
+        "WorkspaceResourceId": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "The Resource ID of an existing Log Analytics workspace to use with diagnostics on the Load Balancer."
+            }
+        },
+        "VNetResourceID": {
+            "type": "string",
+            "metadata": {
+                "description": "The resource ID for the existing virtual network to use with the frontend load balancer and VMSS."
+            }
+        },
+        "LBSubnetName": {
+            "type": "string",
+            "metadata": {
+                "description": "The name of the subnet (not the resource ID) to use with the load balancer."
+            }
+        },
+        "VMSSSubnetName": {
+            "type": "string",
+            "metadata": {
+                "description": "The name of the subnet (not the resource ID) to use with the VMSS."
+            }
+        },
+        "LoadBalancerAccessibility": {
+            "type": "string",
+            "defaultValue": "Internal",
+            "allowedValues": [
+                "External",
+                "Internal"
+            ],
+            "metadata": {
+                "description": "Indicates whether the frontend load balancer should be available internally or externally."
+            }
+        },
+        "LoadBalancerFrontendIPIsStatic": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "When the frontend load balancer is available internally, indicates whether the private IP assgiend to it is dynamically or statically assigned."
+            }
+        },
+        "LoadBalancerFrontendPrivateStaticIPAddress": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "When the frontend load balancer is available internally and a private static IP address should be used, indicates the private static IP address to use."
+            }
+        },
+        "DeployLoadBalancerDiagnostics": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Indicates whether to create a diagnostics setting for the Load Balancer. Requires the Resource ID of a Log Analytics Workspace to work."
+            }
+        },
+        "AddCustomScriptExtension": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Indicates whether the Custom Script Extension gets added to the VM Scale Set."
+            }
+        }
+    },
+    "variables": {
+        "deploymentRegion": "[resourceGroup().location]",
+        "baseSequenceNumberFormatted": "[format('{0:00}', parameters('BaseSequenceNumber'))]",
+        "asgName": "[concat(parameters('DeploymentEnvironment'),'-ASG-',parameters('BaseName'),'-',variables('baseSequenceNumberFormatted'))]",
+        "nsgName": "[concat(parameters('DeploymentEnvironment'),'-NSG-',parameters('BaseName'),'-',variables('baseSequenceNumberFormatted'))]",
+        "vmssName": "[concat(parameters('DeploymentEnvironment'),'-VMSS-',parameters('BaseName'),'-',variables('baseSequenceNumberFormatted'))]",
+        "vmssExtensionAppHealthNameBase": "VMSS-AppHealth",
+        "vmssExtensionCSENameBase": "VMSS-CS",
+        "vmssExtensionCSEName": "[concat(variables('vmssName'),'/',variables('vmssExtensionCSENameBase'))]",
+        "autoscaleSettingName": "[concat(variables('vmssName'),'-AutoScale-01')]",
+        "storageAccountName": "[toLower(parameters('StorageAccountName'))]",
+        "blobEndpointURI": "[toLower(concat('https://',variables('storageAccountName'),'.blob.core.windows.net/'))]",
+        "pipForLBName": "[concat(parameters('DeploymentEnvironment'),'-PIP-',parameters('BaseName'),'-',variables('baseSequenceNumberFormatted'))]",
+        "lbPIPProperty": {
+            "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('pipForLBName'))]"
+        },
+        "lbName": "[concat(parameters('DeploymentEnvironment'),'-LB-',parameters('BaseName'),'-',variables('baseSequenceNumberFormatted'))]",
+        "lbProbeName": "Syslog-VMSS-3389-TCP",
+        "lbBackendPoolName": "Syslog-VMSS",
+        "lbDiagnosticsName": "[concat(variables('lbName'),'-Diagnostics-01')]",
+        "lbFrontendConfigurationName": "[concat(parameters('BaseName'),'-LB','-FrontEndConfig','-01')]",
+        "lbCEFProbeResourceId": "[concat(resourceId('Microsoft.Network/loadBalancers',variables('lbName')),'/probes/',variables('lbProbeName'))]",
+        "cseCommandExternal": "[concat('powershell.exe -NonInteractive -ExecutionPolicy Unrestricted -Command Set-ItemProperty -Path ''HKLM:\\SYSTEM\\CurrentControlSet\\Services\\W32Time\\Parameters'' -Name ''AnnounceFlags'' -Value ''5'' -Force;Set-ItemProperty -Path ''HKLM:\\SYSTEM\\CurrentControlSet\\Services\\W32Time\\Config'' -Name ''AnnounceFlags'' -Value ''5'' -Force;Set-ItemProperty -Path ''HKLM:\\SYSTEM\\CurrentControlSet\\Services\\W32Time\\TimeProviders\\NtpServer'' -Name ''Enabled'' -Value ''1'' -Force;Set-ItemProperty -Path ''HKLM:\\SYSTEM\\CurrentControlSet\\Services\\W32Time\\Parameters'' -Name ''NtpServer'' -Value ''',parameters('NTPServerAddresses'),''' -Force;Set-ItemProperty -Path ''HKLM:\\SYSTEM\\CurrentControlSet\\Services\\W32Time\\Config'' -Name ''MaxPosPhaseCorrection'' -Value ''1800'' -Force;Set-ItemProperty -Path ''HKLM:\\SYSTEM\\CurrentControlSet\\Services\\W32Time\\Config'' -Name ''MaxNegPhaseCorrection'' -Value ''1800'' -Force;Set-ItemProperty -Path ''HKLM:\\SYSTEM\\CurrentControlSet\\Services\\W32Time\\TimeProviders\\VMICTimeProvider'' -Name ''Enabled'' -Value ''0'' -Force;Set-ItemProperty -Path ''HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Services\\W32Time\\TimeProviders\\NtpClient'' -Name ''Enabled'' -Value ''1'' -Force;New-NetFirewallRule -Name ''NTP-In'' -Description ''Allows NTP Inbound'' -DisplayName ''NTP-In'' -Profile ''Any'' -Direction ''Inbound'' -Action ''Allow'' -Protocol ''UDP'' -LocalPort ''123''&&net stop w32time && net start w32time')]",
+        "cseCommandHostOnly": "powershell.exe -NonInteractive -ExecutionPolicy Unrestricted -Command Set-ItemProperty -Path ''HKLM:\\SYSTEM\\CurrentControlSet\\Services\\W32Time\\TimeProviders\\VMICTimeProvider'' -Name ''Enabled'' -Value ''1'' -Force;Set-ItemProperty -Path ''HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Services\\W32Time\\TimeProviders\\NtpClient'' -Name ''Enabled'' -Value ''0'' -Force;New-NetFirewallRule -Name ''NTP-In'' -Description ''Allows NTP Inbound'' -DisplayName ''NTP-In'' -Profile ''Any'' -Direction ''Inbound'' -Action ''Allow'' -Protocol ''UDP'' -LocalPort ''123''&&net stop w32time && net start w32time",
+        "lBSubnetResourceID": "[concat(parameters('VNetResourceID'),'/subnets/',parameters('LBSubnetName'))]",
+        "lbSubnetProperty": {
+            "id": "[variables('lBSubnetResourceID')]"
+        },
+        "vMSSASGProperty": [
+            {
+                "id": "[resourceId('Microsoft.Network/applicationSecurityGroups', variables('asgName'))]"
+            }
+        ],
+        "vMSSNSGProperty": {
+            "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgName'))]"
+        },
+        "vMSSSubnetResourceID": "[concat(parameters('VNetResourceID'),'/subnets/',parameters('VMSSSubnetName'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2021-01-01",
+            "name": "[variables('storageAccountName')]",
+            "location": "[variables('deploymentRegion')]",
+            "condition": "[parameters('DeployNewStorageAccount')]",
+            "tags": {
+                "displayName": "Storage Account for VMSS Boot Diagnostics"
+            },
+            "sku": {
+                "name": "Standard_LRS",
+                "tier": "Standard"
+            },
+            "kind": "StorageV2",
+            "properties": {
+                "supportsHttpsTrafficOnly": true
+            }
+        },
+        {
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('pipForLBName')]",
+            "location": "[variables('deploymentRegion')]",
+            "condition": "[equals(parameters('LoadBalancerAccessibility'),'External')]",
+            "tags": {
+                "displayName": "Public IP for Load Balancer"
+            },
+            "sku": {
+                "name": "Standard",
+                "tier": "Regional"
+            },
+            "scale": null,
+            "properties": {
+                "publicIPAllocationMethod": "Static",
+                "idleTimeoutInMinutes": 11,
+                "dnsSettings": {
+                    "domainNameLabel": "[tolower(concat(parameters('BaseName'),'vmss',variables('baseSequenceNumberFormatted')))]",
+                    "fqdn": "[tolower(concat(parameters('BaseName'),'vmss',variables('baseSequenceNumberFormatted'),'.',variables('deploymentRegion'),'.cloudapp.azure.com'))]"
+                }
+            },
+            "zones": [
+                "1",
+                "2",
+                "3"
+            ]
+        },
+        {
+            "type": "Microsoft.Network/applicationSecurityGroups",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('asgName')]",
+            "location": "[variables('deploymentRegion')]",
+            "condition": "[equals(parameters('LoadBalancerAccessibility'),'External')]",
+            "tags": {
+                "displayName": "ASG for VMSS"
+            },
+            "properties": {}
+        },
+        {
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('nsgName')]",
+            "location": "[variables('deploymentRegion')]",
+            "condition": "[equals(parameters('LoadBalancerAccessibility'),'External')]",
+            "tags": {
+                "displayName": "NSG for VMSS"
+            },
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "Allow_NTP_In_From_Internet_to_VMSS",
+                        "properties": {
+                            "protocol": "UDP",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "123",
+                            "sourceAddressPrefix": "Internet",
+                            "access": "Allow",
+                            "priority": 1000,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": [],
+                            "destinationApplicationSecurityGroups": [
+                                {
+                                    "id": "[resourceId('Microsoft.Network/applicationSecurityGroups', variables('asgName'))]"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "Allow_NTP_In_From_VirtualNetwork_to_VMSS",
+                        "properties": {
+                            "protocol": "UDP",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "123",
+                            "sourceAddressPrefix": "VirtualNetwork",
+                            "access": "Allow",
+                            "priority": 1001,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": [],
+                            "destinationApplicationSecurityGroups": [
+                                {
+                                    "id": "[resourceId('Microsoft.Network/applicationSecurityGroups', variables('asgName'))]"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/loadBalancers",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('lbName')]",
+            "location": "[variables('deploymentRegion')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses',variables('pipForLBName'))]"
+            ],
+            "tags": {
+                "displayName": "External or Internal Load Balancer"
+            },
+            "sku": {
+                "name": "Standard"
+            },
+            "properties": {
+                "frontendIPConfigurations": [
+                    {
+                        "name": "[variables('lbFrontendConfigurationName')]",
+                        "properties": {
+                            "privateIPAllocationMethod": "[if(equals(parameters('LoadBalancerAccessibility'),'Internal'),if(parameters('LoadBalancerFrontendIPIsStatic'),'Static','Dynamic'),json('null'))]",
+                            "privateIPAddress": "[if(equals(parameters('LoadBalancerAccessibility'),'Internal'),if(parameters('LoadBalancerFrontendIPIsStatic'),parameters('LoadBalancerFrontendPrivateStaticIPAddress'),json('null')),json('null'))]",
+                            "publicIPAddress": "[if(equals(parameters('LoadBalancerAccessibility'),'External'),variables('lbPIPProperty'),json('null'))]",
+                            "privateIPAddressVersion": "[if(equals(parameters('LoadBalancerAccessibility'),'Internal'),'IPv4',json('null'))]",
+                            "subnet": "[if(equals(parameters('LoadBalancerAccessibility'),'Internal'),variables('lbSubnetProperty'),json('null'))]"
+                        },
+                        "zones": "[if(equals(parameters('LoadBalancerAccessibility'),'Internal'),split('1,2,3', ','),json('null'))]"
+                    }
+                ],
+                "backendAddressPools": [
+                    {
+                        "name": "[variables('lbBackendPoolName')]",
+                        "properties": {}
+                    }
+                ],
+                "inboundNatPools": [],
+                "loadBalancingRules": [
+                    {
+                        "name": "NTP-UDP-LBR-01",
+                        "properties": {
+                            "frontendIPConfiguration": {
+                                "id": "[concat(resourceId('Microsoft.Network/loadBalancers',variables('lbName')),'/frontendIPConfigurations/',variables('lbFrontendConfigurationName'))]"
+                            },
+                            "frontendPort": 123,
+                            "backendPort": 123,
+                            "enableFloatingIP": false,
+                            "idleTimeoutInMinutes": 4,
+                            "protocol": "Udp",
+                            "enableTcpReset": false,
+                            "loadDistribution": "SourceIPProtocol",
+                            "disableOutboundSnat": true,
+                            "backendAddressPool": {
+                                "id": "[concat(resourceId('Microsoft.Network/loadBalancers',variables('lbName')),'/backendAddressPools/',variables('lbBackendPoolName'))]"
+                            },
+                            "probe": {
+                                "id": "[variables('lbCEFProbeResourceId')]"
+                            }
+                        }
+                    }
+                ],
+                "probes": [
+                    {
+                        "name": "[variables('lbProbeName')]",
+                        "properties": {
+                            "protocol": "Tcp",
+                            "port": 3389,
+                            "intervalInSeconds": 5,
+                            "numberOfProbes": 2
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/loadBalancers/providers/diagnosticSettings",
+            "apiVersion": "2017-05-01-preview",
+            "name": "[concat(variables('lbName'), '/Microsoft.Insights/', variables('lbDiagnosticsName'))]",
+            "location": "[variables('deploymentRegion')]",
+            "condition": "[parameters('DeployLoadBalancerDiagnostics')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/loadBalancers',variables('lbName'))]"
+            ],
+            "tags": {
+                "displayName": "Load Balancer Diagnostics"
+            },
+            "properties": {
+                "workspaceId": "[if(parameters('DeployLoadBalancerDiagnostics'),parameters('WorkspaceResourceId'),json('null'))]",
+                "logs": [
+                    {
+                        "category": "LoadBalancerAlertEvent",
+                        "enabled": true
+                    },
+                    {
+                        "category": "LoadBalancerProbeHealthStatus",
+                        "enabled": true
+                    }
+                ],
+                "metrics": [
+                    {
+                        "category": "AllMetrics",
+                        "enabled": true
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachineScaleSets",
+            "apiVersion": "2020-12-01",
+            "name": "[variables('vmssName')]",
+            "location": "[variables('deploymentRegion')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts',variables('storageAccountName'))]",
+                "[resourceId('Microsoft.Network/loadBalancers',variables('lbName'))]",
+                "[resourceId('Microsoft.Network/applicationSecurityGroups', variables('asgName'))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgName'))]"
+            ],
+            "tags": {
+                "displayName": "VM Scale Set"
+            },
+            "sku": {
+                "name": "[parameters('InstanceSize')]",
+                "tier": "Standard",
+                "capacity": "[parameters('AutoscaleMin')]"
+            },
+            "zones": [
+                "1",
+                "2",
+                "3"
+            ],
+            "properties": {
+                "singlePlacementGroup": true,
+                "upgradePolicy": {
+                    "mode": "Rolling",
+                    "rollingUpgradePolicy": {
+                        "maxBatchInstancePercent": 20,
+                        "maxUnhealthyInstancePercent": 20,
+                        "maxUnhealthyUpgradedInstancePercent": 20
+                    }
+                },
+                "virtualMachineProfile": {
+                    "osProfile": {
+                        "computerNamePrefix": "[parameters('BaseName')]",
+                        "adminUsername": "[parameters('AdminUserName')]",
+                        "adminPassword": "[parameters('AdminPassword')]"
+                    },
+                    "storageProfile": {
+                        "osDisk": {
+                            "createOption": "FromImage",
+                            "caching": "ReadWrite",
+                            "managedDisk": {
+                                "storageAccountType": "[parameters('OSDiskType')]"
+                            },
+                            "diskSizeGB": "[parameters('OSDiskSize')]"
+                        },
+                        "imageReference": {
+                            "publisher": "MicrosoftWindowsServer",
+                            "offer": "WindowsServer",
+                            "sku": "[parameters('OSImageSKU')]",
+                            "version": "latest"
+                        }
+                    },
+                    "networkProfile": {
+                        "networkInterfaceConfigurations": [
+                            {
+                                "name": "[concat(parameters('DeploymentEnvironment'),'-NIC-',parameters('BaseName'),'-',variables('baseSequenceNumberFormatted'))]",
+                                "properties": {
+                                    "primary": true,
+                                    "enableAcceleratedNetworking": true,
+                                    "dnsSettings": {
+                                        "dnsServers": []
+                                    },
+                                    "enableIPForwarding": false,
+                                    "ipConfigurations": [
+                                        {
+                                            "name": "[concat('IPConfig-01')]",
+                                            "properties": {
+                                                "applicationSecurityGroups": "[if(equals(parameters('LoadBalancerAccessibility'), 'External'),variables('vMSSASGProperty'),json('null'))]",
+                                                "subnet": {
+                                                    "id": "[variables('vMSSSubnetResourceID')]"
+                                                },
+                                                "privateIPAddressVersion": "IPv4",
+                                                "loadBalancerBackendAddressPools": [
+                                                    {
+                                                        "id": "[concat(resourceId('Microsoft.Network/loadBalancers',variables('lbName')),'/backendAddressPools/',variables('lbBackendPoolName'))]"
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    ],
+                                    "networkSecurityGroup": "[if(equals(parameters('LoadBalancerAccessibility'), 'External'),variables('vMSSNSGProperty'),json('null'))]"
+                                }
+                            }
+                        ]
+                    },
+                    "diagnosticsProfile": {
+                        "bootDiagnostics": {
+                            "enabled": true,
+                            "storageUri": "[if(parameters('DeployNewStorageAccount'),reference(resourceId('Microsoft.Storage/storageAccounts',variables('storageAccountName'))).primaryEndpoints.blob,variables('blobEndpointURI'))]"
+                        }
+                    },
+                    "extensionProfile": {
+                        "extensions": [
+                            {
+                                "name": "[variables('vmssExtensionAppHealthNameBase')]",
+                                "properties": {
+                                    "publisher": "Microsoft.ManagedServices",
+                                    "type": "ApplicationHealthWindows",
+                                    "typeHandlerVersion": "1.0",
+                                    "autoUpgradeMinorVersion": true,
+                                    "settings": {
+                                        "protocol": "tcp",
+                                        "port": 3389
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "priority": "Regular",
+                    "licenseType": "[if(parameters('HybridUseBenefit'),'Windows_Server',json('null'))]"
+                },
+                "zoneBalance": true,
+                "overprovision": true,
+                "doNotRunExtensionsOnOverprovisionedVMs": false,
+                "platformFaultDomainCount": 5
+            }
+        },
+        {
+            "type": "Microsoft.Insights/autoScaleSettings",
+            "apiVersion": "2015-04-01",
+            "name": "[variables('autoscaleSettingName')]",
+            "location": "[variables('deploymentRegion')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachineScaleSets',variables('vmssName'))]"
+            ],
+            "tags": {
+                "displayName": "Autoscale Settings for VMSS"
+            },
+            "properties": {
+                "profiles": [
+                    {
+                        "name": "Profile1",
+                        "capacity": {
+                            "minimum": "[parameters('AutoscaleMin')]",
+                            "maximum": "[parameters('AutoscaleMax')]",
+                            "default": "[parameters('AutoscaleMin')]"
+                        },
+                        "rules": [
+                            {
+                                "metricTrigger": {
+                                    "metricName": "Percentage CPU",
+                                    "metricNamespace": "",
+                                    "metricResourceUri": "[resourceId('Microsoft.Compute/virtualMachineScaleSets',variables('vmssName'))]",
+                                    "timeGrain": "PT1M",
+                                    "statistic": "Average",
+                                    "timeWindow": "PT5M",
+                                    "timeAggregation": "Average",
+                                    "operator": "GreaterThan",
+                                    "threshold": 75,
+                                    "dimensions": [],
+                                    "dividePerInstance": false
+                                },
+                                "scaleAction": {
+                                    "direction": "Increase",
+                                    "type": "ChangeCount",
+                                    "value": "1",
+                                    "cooldown": "PT1M"
+                                }
+                            },
+                            {
+                                "metricTrigger": {
+                                    "metricName": "Percentage CPU",
+                                    "metricNamespace": "",
+                                    "metricResourceUri": "[resourceId('Microsoft.Compute/virtualMachineScaleSets',variables('vmssName'))]",
+                                    "timeGrain": "PT1M",
+                                    "statistic": "Average",
+                                    "timeWindow": "PT5M",
+                                    "timeAggregation": "Average",
+                                    "operator": "LessThan",
+                                    "threshold": 25,
+                                    "dimensions": [],
+                                    "dividePerInstance": false
+                                },
+                                "scaleAction": {
+                                    "direction": "Decrease",
+                                    "type": "ChangeCount",
+                                    "value": "1",
+                                    "cooldown": "PT1M"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "enabled": true,
+                "name": "[variables('autoscaleSettingName')]",
+                "targetResourceUri": "[resourceId('Microsoft.Compute/virtualMachineScaleSets',variables('vmssName'))]"
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachineScaleSets/extensions",
+            "apiVersion": "2021-11-01",
+            "name": "[variables('vmssExtensionCSEName')]",
+            "location": "[resourceGroup().location]",
+            "condition": "[and(parameters('AddCustomScriptExtension'),not(equals(parameters('NTPServerSource'),'Default')))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachineScaleSets',variables('vmssName'))]"
+            ],
+            "properties": {
+                "publisher": "Microsoft.Compute",
+                "type": "CustomScriptExtension",
+                "typeHandlerVersion": "1.10",
+                "autoUpgradeMinorVersion": true,
+                "protectedSettings": {
+                    "commandToExecute": "[if(equals(parameters('NTPServerSource'),'External'),variables('cseCommandExternal'),if(equals(parameters('NTPServerSource'),'HostOnly'),variables('cseCommandHostOnly'),json('null')))]"
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "LoadBalancerName": {
+            "type": "string",
+            "value": "[variables('lbName')]"
+        },
+        "VMSSName": {
+            "type": "string",
+            "value": "[variables('vmssName')]"
+        },
+        "VMSSAutoScaleSettingName": {
+            "type": "string",
+            "value": "[variables('autoscaleSettingName')]"
+        }
+    }
+}
