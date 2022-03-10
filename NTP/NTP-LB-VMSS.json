@@ -321,6 +321,9 @@
             "name": "[variables('nsgName')]",
             "location": "[variables('deploymentRegion')]",
             "condition": "[equals(parameters('LoadBalancerAccessibility'),'External')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/applicationSecurityGroups', variables('asgName'))]"
+            ],
             "tags": {
                 "displayName": "NSG for VMSS"
             },
