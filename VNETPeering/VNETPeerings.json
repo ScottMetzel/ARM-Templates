@@ -1,0 +1,165 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "LocalVirtualNetworkResourceID": {
+            "type": "string",
+            "metadata": {
+                "description": "The Resource ID of the local Virtual Network."
+            }
+        },
+        "LocalVirtualNetworkPeeringNames": {
+            "type": "array",
+            "metadata": {
+                "description": "An array of peering names for the local virtual network."
+            }
+        },
+        "LocalVirtualNetworkAllowVNETAccess": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Indicates the peering allows access to the local Virtual Network."
+            }
+        },
+        "LocalVirtualNetworkAllowForwardedTraffic": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Indicates the peering allows forwarded traffic to the local Virtual Network."
+            }
+        },
+        "LocalVirtualNetworkAllowGatewayTransit": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Indicates the peering allows gateway transit to the local virtual network."
+            }
+        },
+        "LocalVirtualNetworkUseRemoteGateways": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Indicates the peering uses remote gateways at the local Virtual Network."
+            }
+        },
+        "RemoteVirtualNetworkPeeringResourceIDs": {
+            "type": "array",
+            "metadata": {
+                "description": "An array of resource IDs which should be the remote virtual networks."
+            }
+        },
+        "RemoteVirtualNetworkPeeringNames": {
+            "type": "array",
+            "metadata": {
+                "description": "An array of peering names for the remote virtual network."
+            }
+        },
+        "RemoteVirtualNetworkAllowVNETAccess": {
+            "type": "array",
+            "metadata": {
+                "description": "An array of boolean values which indicates the peering allows access to the remote Virtual Network."
+            }
+        },
+        "RemoteVirtualNetworkAllowForwardedTraffic": {
+            "type": "array",
+            "metadata": {
+                "description": "An array of boolean values which indicates the peering allows forwarded traffic to the remote Virtual Network."
+            }
+        },
+        "RemoteVirtualNetworkAllowGatewayTransit": {
+            "type": "array",
+            "metadata": {
+                "description": "An array of boolean values which indicates the peering allows gateway transit to the remote virtual network."
+            }
+        },
+        "RemoteVirtualNetworkUseRemoteGateways": {
+            "type": "array",
+            "metadata": {
+                "description": "An array of boolean values which indicates the peering uses remote gateways at the remote Virtual Network."
+            }
+        }
+    },
+    "functions": [],
+    "variables": {
+        "localVirtualNetworkName": "[last(split(parameters('LocalVirtualNetworkResourceID'),'/'))]",
+        "copy": [
+            {
+                "name": "remoteVirtualNetworkSubscriptionIDs",
+                "count": "[length(parameters('RemoteVirtualNetworkPeeringResourceIDs'))]",
+                "input": "[split(parameters('RemoteVirtualNetworkPeeringResourceIDs')[copyIndex('remoteVirtualNetworkSubscriptionIDs')],'/')[2]]"
+            },
+            {
+                "name": "remoteVirtualNetworkResourceGroupNames",
+                "count": "[length(parameters('RemoteVirtualNetworkPeeringResourceIDs'))]",
+                "input": "[split(parameters('RemoteVirtualNetworkPeeringResourceIDs')[copyIndex('remoteVirtualNetworkResourceGroupNames')],'/')[4]]"
+            },
+            {
+                "name": "remoteVirtualNetworkNames",
+                "count": "[length(parameters('RemoteVirtualNetworkPeeringResourceIDs'))]",
+                "input": "[last(split(parameters('RemoteVirtualNetworkPeeringResourceIDs')[copyIndex('remoteVirtualNetworkNames')],'/'))]"
+            }
+        ]
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+            "apiVersion": "2020-11-01",
+            "name": "[concat(variables('localVirtualNetworkName'), '/', parameters('LocalVirtualNetworkPeeringNames')[copyIndex('LocalVNETPeeringLoop')])]",
+            "copy": {
+                "count": "[length(parameters('LocalVirtualNetworkPeeringNames'))]",
+                "mode": "Serial",
+                "name": "LocalVNETPeeringLoop"
+            },
+            "properties": {
+                "remoteVirtualNetwork": {
+                    "id": "[parameters('RemoteVirtualNetworkPeeringResourceIDs')[copyIndex('LocalVNETPeeringLoop')]]"
+                },
+                "allowVirtualNetworkAccess": "[parameters('LocalVirtualNetworkAllowVNETAccess')]",
+                "allowForwardedTraffic": "[parameters('LocalVirtualNetworkAllowForwardedTraffic')]",
+                "allowGatewayTransit": "[parameters('LocalVirtualNetworkAllowGatewayTransit')]",
+                "useRemoteGateways": "[parameters('LocalVirtualNetworkUseRemoteGateways')]"
+            }
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2018-05-01",
+            "name": "[concat('RemoteVNETPeer_',variables('remoteVirtualNetworkResourceGroupNames')[copyIndex('RemoteVNETPeeringLoop')],'_',deployment().name)]",
+            "subscriptionId": "[variables('remoteVirtualNetworkSubscriptionIDs')[copyIndex('RemoteVNETPeeringLoop')]]",
+            "resourceGroup": "[variables('remoteVirtualNetworkResourceGroupNames')[copyIndex('RemoteVNETPeeringLoop')]]",
+            "copy": {
+                "count": "[length(parameters('RemoteVirtualNetworkPeeringNames'))]",
+                "mode": "Parallel",
+                "name": "RemoteVNETPeeringLoop"
+            },
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                    },
+                    "variables": {
+                    },
+                    "resources": [
+                        {
+                            "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+                            "apiVersion": "2020-11-01",
+                            "name": "[concat(variables('remoteVirtualNetworkNames')[copyIndex('RemoteVNETPeeringLoop')], '/', parameters('RemoteVirtualNetworkPeeringNames')[copyIndex('RemoteVNETPeeringLoop')])]",
+                            "properties": {
+                                "remoteVirtualNetwork": {
+                                    "id": "[parameters('LocalVirtualNetworkResourceID')]"
+                                },
+                                "allowVirtualNetworkAccess": "[parameters('RemoteVirtualNetworkAllowVNETAccess')[copyIndex('RemoteVNETPeeringLoop')]]",
+                                "allowForwardedTraffic": "[parameters('RemoteVirtualNetworkAllowForwardedTraffic')[copyIndex('RemoteVNETPeeringLoop')]]",
+                                "allowGatewayTransit": "[parameters('RemoteVirtualNetworkAllowGatewayTransit')[copyIndex('RemoteVNETPeeringLoop')]]",
+                                "useRemoteGateways": "[parameters('RemoteVirtualNetworkUseRemoteGateways')[copyIndex('RemoteVNETPeeringLoop')]]"
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "outputs": {
+    }
+}
