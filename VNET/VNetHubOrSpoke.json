@@ -1,0 +1,243 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "Region": {
+            "type": "string",
+            "allowedValues": [
+                "centralus",
+                "eastus",
+                "eastus2",
+                "northcentralus",
+                "southcentralus",
+                "westcentralus",
+                "westus",
+                "westus2",
+                "westus3"
+            ]
+        },
+        "DeploymentEnvironment": {
+            "type": "string",
+            "defaultValue": "Dev",
+            "allowedValues": [
+                "Dev",
+                "Test",
+                "Stage",
+                "Prod"
+            ],
+            "metadata": {
+                "description": "The deployment environment which Azure resources will be deployed in."
+            }
+        },
+        "HubOrSpoke": {
+            "type": "string",
+            "defaultValue": "Hub",
+            "allowedValues": [
+                "Hub",
+                "Spoke"
+            ]
+        },
+        "BaseSequenceNumber": {
+            "type": "int",
+            "defaultValue": 1,
+            "minValue": 1,
+            "maxValue": 99,
+            "metadata": {
+                "description": "The base sequence number for all resources to create."
+            }
+        },
+        "VNETAddressSpace": {
+            "type": "string",
+            "minLength": 7,
+            "maxLength": 14,
+            "metadata": {
+                "description": "The address space to use for the VNET, minus the CIDR mask (e.g., 10.4.5.0)"
+            }
+        },
+        "VNETCIDR": {
+            "type": "int",
+            "defaultValue": 16,
+            "minValue": 0,
+            "maxValue": 32,
+            "metadata": {
+                "description": "The CIDR mask of the address space for the VNET."
+            }
+        },
+        "VNETDNSServers": {
+            "type": "array",
+            "defaultValue": [
+                ""
+            ],
+            "metadata": {
+                "description": "The DNS servers to use for the VNET. Leave empty to set the VNET to use Azure-supplied DNS."
+            }
+        }
+    },
+    "variables": {
+        "baseSequenceNumberFormatted": "[format('{0:00}', parameters('BaseSequenceNumber'))]",
+        "vnetName": "[concat(parameters('DeploymentEnvironment'), '-VNET-', parameters('HubOrSpoke'), '-', variables('baseSequenceNumberFormatted'))]",
+        "vnetAddressSpaceStringArray": "[createArray(concat(parameters('VNETAddressSpace'), '/', string(parameters('VNETCIDR'))))]",
+        "vnetAddressSpaceSplitArray": "[split(parameters('VNETAddressSpace'), '.')]",
+        "vnetAddressSpaceFirstTwoOctetsString": "[concat(variables('vnetAddressSpaceSplitArray')[0], '.', variables('vnetAddressSpaceSplitArray')[1], '.')]",
+        "vnetHubSubnets": [
+            {
+                "name": "GatewaySubnet",
+                "properties": {
+                    "addressPrefix": "[concat(variables('vnetAddressSpaceFirstTwoOctetsString'),'0.0/27')]",
+                    "serviceEndpoints": [],
+                    "delegations": [],
+                    "privateEndpointNetworkPolicies": "Enabled",
+                    "privateLinkServiceNetworkPolicies": "Enabled"
+                }
+            },
+            {
+                "name": "AzureFirewallSubnet",
+                "properties": {
+                    "addressPrefix": "[concat(variables('vnetAddressSpaceFirstTwoOctetsString'),'1.0/24')]",
+                    "serviceEndpoints": [],
+                    "delegations": [],
+                    "privateEndpointNetworkPolicies": "Enabled",
+                    "privateLinkServiceNetworkPolicies": "Enabled"
+                }
+            },
+            {
+                "name": "AzureBastionSubnet",
+                "properties": {
+                    "addressPrefix": "[concat(variables('vnetAddressSpaceFirstTwoOctetsString'),'2.0/24')]",
+                    "serviceEndpoints": [],
+                    "delegations": [],
+                    "privateEndpointNetworkPolicies": "Enabled",
+                    "privateLinkServiceNetworkPolicies": "Enabled"
+                }
+            },
+            {
+                "name": "RemoteManagement01",
+                "properties": {
+                    "addressPrefix": "[concat(variables('vnetAddressSpaceFirstTwoOctetsString'),'12.0/24')]",
+                    "serviceEndpoints": [],
+                    "delegations": [],
+                    "privateEndpointNetworkPolicies": "Enabled",
+                    "privateLinkServiceNetworkPolicies": "Enabled"
+                }
+            },
+            {
+                "name": "AD01",
+                "properties": {
+                    "addressPrefix": "[concat(variables('vnetAddressSpaceFirstTwoOctetsString'),'13.0/24')]",
+                    "serviceEndpoints": [],
+                    "delegations": [],
+                    "privateEndpointNetworkPolicies": "Enabled",
+                    "privateLinkServiceNetworkPolicies": "Enabled"
+                }
+            },
+            {
+                "name": "VDI01",
+                "properties": {
+                    "addressPrefix": "[concat(variables('vnetAddressSpaceFirstTwoOctetsString'),'14.0/27')]",
+                    "serviceEndpoints": [],
+                    "delegations": [],
+                    "privateEndpointNetworkPolicies": "Enabled",
+                    "privateLinkServiceNetworkPolicies": "Enabled"
+                }
+            }
+        ],
+        "vnetSpokeSubnets": [
+            {
+                "name": "LB01",
+                "properties": {
+                    "addressPrefix": "[concat(variables('vnetAddressSpaceFirstTwoOctetsString'),'20.0/24')]",
+                    "serviceEndpoints": [],
+                    "delegations": [],
+                    "privateEndpointNetworkPolicies": "Enabled",
+                    "privateLinkServiceNetworkPolicies": "Enabled"
+                }
+            },
+            {
+                "name": "Web01",
+                "properties": {
+                    "addressPrefix": "[concat(variables('vnetAddressSpaceFirstTwoOctetsString'),'21.0/24')]",
+                    "serviceEndpoints": [],
+                    "delegations": [],
+                    "privateEndpointNetworkPolicies": "Enabled",
+                    "privateLinkServiceNetworkPolicies": "Enabled"
+                }
+            },
+            {
+                "name": "App01",
+                "properties": {
+                    "addressPrefix": "[concat(variables('vnetAddressSpaceFirstTwoOctetsString'),'22.0/24')]",
+                    "serviceEndpoints": [],
+                    "delegations": [],
+                    "privateEndpointNetworkPolicies": "Enabled",
+                    "privateLinkServiceNetworkPolicies": "Enabled"
+                }
+            },
+            {
+                "name": "DB01",
+                "properties": {
+                    "addressPrefix": "[concat(variables('vnetAddressSpaceFirstTwoOctetsString'),'23.0/24')]",
+                    "serviceEndpoints": [],
+                    "delegations": [],
+                    "privateEndpointNetworkPolicies": "Enabled",
+                    "privateLinkServiceNetworkPolicies": "Enabled"
+                }
+            },
+            {
+                "name": "Cluster01",
+                "properties": {
+                    "addressPrefix": "[concat(variables('vnetAddressSpaceFirstTwoOctetsString'),'24.0/24')]",
+                    "serviceEndpoints": [],
+                    "delegations": [],
+                    "privateEndpointNetworkPolicies": "Enabled",
+                    "privateLinkServiceNetworkPolicies": "Enabled"
+                }
+            },
+            {
+                "name": "Storage01",
+                "properties": {
+                    "addressPrefix": "[concat(variables('vnetAddressSpaceFirstTwoOctetsString'),'25.0/24')]",
+                    "serviceEndpoints": [],
+                    "delegations": [],
+                    "privateEndpointNetworkPolicies": "Enabled",
+                    "privateLinkServiceNetworkPolicies": "Enabled"
+                }
+            },
+            {
+                "name": "KV01",
+                "properties": {
+                    "addressPrefix": "[concat(variables('vnetAddressSpaceFirstTwoOctetsString'),'26.0/24')]",
+                    "serviceEndpoints": [],
+                    "delegations": [],
+                    "privateEndpointNetworkPolicies": "Enabled",
+                    "privateLinkServiceNetworkPolicies": "Enabled"
+                }
+            }
+        ]
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('vnetName')]",
+            "location": "[parameters('Region')]",
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": "[variables('vnetAddressSpaceStringArray')]"
+                },
+                "dhcpOptions": {
+                    "dnsServers": "[parameters('VNETDNSServers')]"
+                },
+                "subnets": "[if(equals(parameters('HubOrSpoke'),'Hub'),concat(variables('vnetHubSubnets'), variables('vnetSpokeSubnets')),variables('vnetSpokeSubnets'))]",
+                "virtualNetworkPeerings": [
+                ],
+                "enableDdosProtection": false
+            }
+        }
+    ],
+    "outputs": {
+        "VNETAddressSpaceFirstTwoOctets": {
+            "type": "string",
+            "value": "[variables('vnetAddressSpaceFirstTwoOctetsString')]"
+        }
+    }
+}

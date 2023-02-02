@@ -3,18 +3,91 @@
     "contentVersion": "1.0.0.0",
     "parameters": {
         "Region": {
-            "type": "string"
+            "type": "string",
+            "metadata": {
+                "description": "The name of the region the Virtual Machine(s) should be built in."
+            }
         },
-        "subnetName": {
-            "type": "string"
+        "Platform": {
+            "type": "string",
+            "allowedValues": [
+                "Azure",
+                "AzureStack"
+            ],
+            "defaultValue": "Azure",
+            "metadata": {
+                "description": "The platform the Virtual Machine(s) should be built on."
+            }
         },
-        "VirtualNetworkResourceID": {
-            "type": "string"
+        "DeploymentEnvironment": {
+            "type": "string",
+            "allowedValues": [
+                "Production",
+                "Stage",
+                "Test",
+                "Development",
+                "Lab"
+            ],
+            "defaultValue": "Development",
+            "metadata": {
+                "description": "The deployment environment the Virtual Machine(s) should be built in."
+            }
         },
-        "virtualMachineName": {
-            "type": "string"
+        "ApplicationID": {
+            "type": "int",
+            "minValue": 0,
+            "maxValue": 99999,
+            "metadata": {
+                "description": "The Application ID of the Virtual Machine(s) to be built."
+            }
         },
-        "osDiskType": {
+        "Function": {
+            "type": "string",
+            "allowedValues": [
+                "Appliance",
+                "Application",
+                "CertificateAuthority",
+                "Database",
+                "DomainController",
+                "FileServer",
+                "Firewall",
+                "Hypervisor",
+                "RemoteDesktop",
+                "Router",
+                "WebServer"
+            ],
+            "metadata": {
+                "description": "The function of the Virtual Machine(s) to be built."
+            }
+        },
+        "Revision": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1,
+            "defaultValue": "A",
+            "metadata": {
+                "description": "The revision of the Virtual Machine(s) to be built."
+            }
+        },
+        "StartingSequenceNumber": {
+            "type": "int",
+            "minValue": 1,
+            "maxValue": 9999,
+            "defaultValue": 1,
+            "metadata": {
+                "description": "The starting sequence number of the Virtual Machine(s) to be built."
+            }
+        },
+        "Count": {
+            "type": "int",
+            "minValue": 1,
+            "maxValue": 20,
+            "defaultValue": 1,
+            "metadata": {
+                "description": "The number of Virtual Machine(s) to build."
+            }
+        },
+        "OSDiskType": {
             "type": "string",
             "defaultValue": "Standard_LRS",
             "allowedValues": [
@@ -47,7 +120,7 @@
             "type": "bool",
             "defaultValue": true,
             "metadata": {
-                "description": "Indicates whether the data disk should be created."
+                "description": "Controls whether a data disk should be created."
             }
         },
         "DataDiskSKU": {
@@ -74,58 +147,101 @@
                 "description": "The size of the data disk in GiB."
             }
         },
-        "NICPrivateIPAllocationMethod": {
+        "VirtualNetworkResourceID": {
+            "type": "string",
+            "metadata": {
+                "description": "The Resource ID of the Virtual Network the Virtual Machine(s) should be connected to."
+            }
+        },
+        "SubnetName": {
+            "type": "string",
+            "metadata": {
+                "description": "The name of the subnet the Virtual Machine(s) should be connected to."
+            }
+        },
+        "NetworkInterfacePrivateIPAllocationMethod": {
             "type": "string",
             "allowedValues": [
                 "Dynamic",
                 "Static"
             ]
         },
-        "NICPrivateIPAddress": {
+        "NetworkInterfacePrivateIPAddress": {
             "type": "string",
-            "defaultValue": ""
+            "defaultValue": "",
+            "metadata": {
+                "description": "The private static IP address of the first Virtual Machine to be built, if static."
+            }
         },
-        "virtualMachineSize": {
+        "IsDMZ": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Indicates whether the Virtual Machine(s) are in an edge network environment."
+            }
+        },
+        "VirtualMachineSize": {
             "type": "string",
             "defaultValue": "Standard_B2s",
             "allowedValues": [
+                "Standard_B2ms",
                 "Standard_B2s",
+                "Standard_B4ms",
+                "Standard_B8ms",
                 "Standard_D2ds_v5",
                 "Standard_D8ds_v5",
                 "Standard_F8s_v2"
-            ]
+            ],
+            "metadata": {
+                "description": "The size of the Virtual Machine(s) to be built."
+            }
         },
-        "adminUsername": {
-            "type": "string"
+        "AdminUsername": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 32,
+            "metadata": {
+                "description": "The name of the local administrator for each Virtual Machine to be built."
+            }
         },
-        "adminPassword": {
-            "type": "secureString"
+        "AdminPassword": {
+            "type": "secureString",
+            "metadata": {
+                "description": "The password of the local administrator for each Virtual Machine to be built."
+            }
         },
-        "patchMode": {
+        "OSPatchMode": {
             "type": "string",
             "defaultValue": "AutomaticByOS",
             "allowedValues": [
                 "AutomaticByOS",
                 "AutomaticByPlatform"
-            ]
-        },
-        "enableHotpatching": {
-            "type": "bool",
-            "defaultValue": false
-        },
-        "Zone": {
-            "type": "int",
-            "minValue": 1,
-            "maxValue": 3,
+            ],
             "metadata": {
-                "description": "If supported in the target Azure region, the Availability Zone which the VM should be placed in."
+                "description": "How the OS is patched - by a configuration within the OS or by the platform."
             }
         },
-        "IsDomainController": {
+        "EnableHotPatching": {
             "type": "bool",
             "defaultValue": false,
             "metadata": {
-                "description": "Indicates the VM being created is a domain controller."
+                "description": "Whether the OS should use hot patching."
+            }
+        },
+        "AvailabilityZone": {
+            "type": "int",
+            "minValue": 0,
+            "maxValue": 3,
+            "defaultValue": 0,
+            "metadata": {
+                "description": "The Availability Zone which the VM should be placed in, if Availability Zones are supported."
+            }
+        },
+        "JoinDomain": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Master control switch for joining a domain or not."
             }
         },
         "DomainName": {
@@ -178,40 +294,88 @@
                 10000000
             ],
             "metadata": {
-                "description": "Indicates how the VM should be joined to the domain."
+                "description": "Controls how the VM should be joined to an Active Directory Domain Services domain."
+            }
+        },
+        "RunDSCCommands": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Controls whether Desired State Configuration commands should be run."
+            }
+        },
+        "DeployResources": {
+            "type": "bool",
+            "defaultValue": true,
+            "metadata": {
+                "description": "Controls overall deployment of resources to Azure."
             }
         }
     },
     "variables": {
         "vnetId": "[parameters('VirtualNetworkResourceID')]",
-        "networkInterfaceName": "[concat('Dev-NIC-', parameters('virtualMachineName'), '-01')]",
-        "managedDiskName01": "[concat('Dev-MDK-', parameters('virtualMachineName'), '-01')]",
-        "managedDiskName02": "[concat('Dev-MDK-', parameters('virtualMachineName'), '-02')]",
-        "subnetRef": "[concat(variables('vnetId'), '/subnets/', parameters('subnetName'))]",
-        "dataDiskArray": [
+        "sequenceNumbers": "[range(parameters('StartingSequenceNumber'), parameters('Count'))]",
+        "platformInitials": "[if(equals(parameters('Platform'), 'Azure'),'A',if(equals(parameters('Platform'),'AzureStack'),'S',json('null')))]",
+        "deploymentEnvironment": "[if(equals('Production', parameters('DeploymentEnvironment')),0,if(equals('Stage', parameters('DeploymentEnvironment')),1,if(equals('Test', parameters('DeploymentEnvironment')),2,if(equals('Development', parameters('DeploymentEnvironment')),3,if(equals('Lab', parameters('DeploymentEnvironment')),4,json('null'))))))]",
+        "deploymentEnvironmentName": "[if(equals('Production', parameters('DeploymentEnvironment')),'Prod',if(equals('Stage', parameters('DeploymentEnvironment')),'Stage',if(equals('Test', parameters('DeploymentEnvironment')),'Test',if(equals('Development', parameters('DeploymentEnvironment')),'Dev',if(equals('Lab', parameters('DeploymentEnvironment')),'Lab',json('null'))))))]",
+        "deploymentEnvironmentFormatted": "[format('{0:00}',if(parameters('IsDMZ'),add(10, variables('deploymentEnvironment')),variables('deploymentEnvironment')))]",
+        "virtualMachineFunction": "[if(equals('Appliance',parameters('Function')),'AL',if(equals('Application',parameters('Function')),'AP',if(equals('CertificateAuthority',parameters('Function')),'CA',if(equals('Database',parameters('Function')),'DB',if(equals('DomainController',parameters('Function')),'DC',if(equals('Firewall',parameters('Function')),'FW',if(equals('Hypervisor',parameters('Function')),'HV',if(equals('RemoteDesktop',parameters('Function')),'RD',if(equals('Router',parameters('Function')),'RT',if(equals('Webserver',parameters('Function')),'WS',if(equals('FileServer',parameters('Function')),'FS',json('null'))))))))))))]",
+        "applicationIDFormatted": "[format('{0:00000}',string(parameters('ApplicationID')))]",
+        "copy": [
             {
-                "createOption": "Attach",
-                "lun": 0,
-                "managedDisk": {
-                    "id": "[resourceId('Microsoft.Compute/disks',variables('managedDiskName02'))]"
-                }
+                "name": "baseSequenceNumbersFormatted",
+                "count": "[parameters('Count')]",
+                "input": "[format('{0:0000}', variables('sequenceNumbers')[copyIndex('baseSequenceNumbersFormatted')])]"
+            },
+            {
+                "name": "virtualMachineNames",
+                "count": "[parameters('Count')]",
+                "input": "[toUpper(concat(variables('deploymentEnvironmentFormatted'),variables('platformInitials'),variables('applicationIDFormatted'),variables('virtualMachineFunction'),parameters('Revision'),variables('baseSequenceNumbersFormatted')[copyIndex('virtualMachineNames')]))]"
+            },
+            {
+                "name": "networkInterfaceNames",
+                "count": "[parameters('Count')]",
+                "input": "[concat(variables('deploymentEnvironmentName'),'-NIC-', variables('virtualMachineNames')[copyIndex('networkInterfaceNames')], '-01')]"
+            },
+            {
+                "name": "managedDisk01Names",
+                "count": "[parameters('Count')]",
+                "input": "[concat(variables('deploymentEnvironmentName'),'-MDK-', variables('virtualMachineNames')[copyIndex('managedDisk01Names')], '-01')]"
+            },
+            {
+                "name": "managedDisk02Names",
+                "count": "[parameters('Count')]",
+                "input": "[concat(variables('deploymentEnvironmentName'),'-MDK-', variables('virtualMachineNames')[copyIndex('managedDisk02Names')], '-02')]"
+            },
+            {
+                "name": "dataDiskArrayObjectNames",
+                "count": "[parameters('Count')]",
+                "input": [
+                    {
+                        "createOption": "Attach",
+                        "lun": 0,
+                        "managedDisk": {
+                            "id": "[resourceId('Microsoft.Compute/disks',variables('managedDisk02Names')[copyIndex('dataDiskArrayObjectNames')])]"
+                        }
+                    }
+                ]
             }
         ],
-        "regionsWithAvailabilityZones": [
-            "centralus",
-            "eastus",
-            "eastus2",
-            "southcentralus",
-            "westus2",
-            "westus3"
-        ]
+        "subnetRef": "[concat(variables('vnetId'), '/subnets/', parameters('SubnetName'))]",
+        "vMExtensionCSCommandToExecute": "[concat('powershell.exe -ExecutionPolicy Unrestricted -Command {Install-WindowsFeature -Name AD-Domain-Services, DNS -IncludeAllSubFeature -IncludeManagementTools}')]"
     },
     "resources": [
         {
-            "name": "[variables('networkInterfaceName')]",
+            "name": "[variables('networkInterfaceNames')[copyIndex('NICCreationLoop')]]",
             "type": "Microsoft.Network/networkInterfaces",
+            "condition": "[parameters('DeployResources')]",
             "apiVersion": "2018-10-01",
             "location": "[parameters('Region')]",
+            "copy": {
+                "count": "[parameters('Count')]",
+                "mode": "Parallel",
+                "name": "NICCreationLoop"
+            },
             "properties": {
                 "ipConfigurations": [
                     {
@@ -220,19 +384,24 @@
                             "subnet": {
                                 "id": "[variables('subnetRef')]"
                             },
-                            "privateIPAddress": "[if(equals(parameters('NICPrivateIPAllocationMethod'),'Static'),parameters('NICPrivateIPAddress'),json('null'))]",
-                            "privateIPAllocationMethod": "[if(equals(parameters('NICPrivateIPAllocationMethod'),'Static'),'Static','Dynamic')]"
+                            "privateIPAddress": "[if(equals(parameters('NetworkInterfacePrivateIPAllocationMethod'),'Static'),parameters('NetworkInterfacePrivateIPAddress'),json('null'))]",
+                            "privateIPAllocationMethod": "[if(equals(parameters('NetworkInterfacePrivateIPAllocationMethod'),'Static'),'Static','Dynamic')]"
                         }
                     }
                 ]
             }
         },
         {
-            "name": "[variables('managedDiskName02')]",
+            "name": "[variables('managedDisk02Names')[copyIndex('DataDiskCreationLoop')]]",
             "type": "Microsoft.Compute/disks",
             "apiVersion": "2020-09-30",
             "location": "[parameters('Region')]",
-            "condition": "[parameters('CreateDataDisk')]",
+            "condition": "[and(parameters('CreateDataDisk'),parameters('DeployResources'))]",
+            "copy": {
+                "count": "[parameters('Count')]",
+                "mode": "Parallel",
+                "name": "DataDiskCreationLoop"
+            },
             "properties": {
                 "diskSizeGB": "[parameters('DataDiskSize')]",
                 "creationData": { "createOption": "empty" }
@@ -240,27 +409,34 @@
             "sku": {
                 "name": "[parameters('DataDiskSKU')]"
             },
-            "zones": "[if(contains(variables('regionsWithAvailabilityZones'),parameters('Region')),array(string(parameters('Zone'))),json('null'))]"
+            "zones": "[if(and(greaterOrEquals(length(pickZones('Microsoft.Compute', 'virtualMachines', parameters('Region'),3)),2),greater(parameters('AvailabilityZone'),0)),array(string(parameters('AvailabilityZone'))),json('null'))]"
         },
         {
-            "name": "[parameters('virtualMachineName')]",
+            "name": "[variables('virtualMachineNames')[copyIndex('VMCreationLoop')]]",
             "type": "Microsoft.Compute/virtualMachines",
             "apiVersion": "2021-03-01",
             "location": "[parameters('Region')]",
+            "condition": "[parameters('DeployResources')]",
+            "copy": {
+                "count": "[parameters('Count')]",
+                "mode": "Parallel",
+                "name": "VMCreationLoop"
+            },
             "dependsOn": [
-                "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaceName'))]"
+                "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaceNames')[copyIndex('VMCreationLoop')])]",
+                "[resourceId('Microsoft.Compute/disks',variables('managedDisk02Names')[copyIndex('VMCreationLoop')])]"
             ],
             "properties": {
                 "hardwareProfile": {
-                    "vmSize": "[parameters('virtualMachineSize')]"
+                    "vmSize": "[parameters('VirtualMachineSize')]"
                 },
                 "storageProfile": {
                     "osDisk": {
                         "createOption": "fromImage",
                         "managedDisk": {
-                            "storageAccountType": "[parameters('osDiskType')]"
+                            "storageAccountType": "[parameters('OSDiskType')]"
                         },
-                        "name": "[variables('managedDiskName01')]"
+                        "name": "[variables('managedDisk01Names')[copyIndex('VMCreationLoop')]]"
                     },
                     "imageReference": {
                         "publisher": "MicrosoftWindowsServer",
@@ -268,25 +444,25 @@
                         "sku": "[parameters('OSImageSKU')]",
                         "version": "latest"
                     },
-                    "dataDisks": "[if(parameters('CreateDataDisk'),variables('dataDiskArray'),json('null'))]"
+                    "dataDisks": "[if(parameters('CreateDataDisk'),variables('dataDiskArrayObjectNames')[copyIndex('VMCreationLoop')],json('null'))]"
                 },
                 "networkProfile": {
                     "networkInterfaces": [
                         {
-                            "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaceName'))]"
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaceNames')[copyIndex('VMCreationLoop')])]"
                         }
                     ]
                 },
                 "osProfile": {
-                    "computerName": "[parameters('virtualMachineName')]",
-                    "adminUsername": "[parameters('adminUsername')]",
-                    "adminPassword": "[parameters('adminPassword')]",
+                    "computerName": "[variables('virtualMachineNames')[copyIndex('VMCreationLoop')]]",
+                    "AdminUsername": "[parameters('AdminUsername')]",
+                    "AdminPassword": "[parameters('AdminPassword')]",
                     "windowsConfiguration": {
                         "enableAutomaticUpdates": true,
                         "provisionVmAgent": true,
                         "patchSettings": {
-                            "enableHotpatching": "[parameters('enableHotpatching')]",
-                            "patchMode": "[if(equals(bool('false'),parameters('enableHotPatching')),json('null'),parameters('patchMode'))]"
+                            "EnableHotPatching": "[parameters('EnableHotPatching')]",
+                            "PatchMode": "[if(equals(bool('false'),parameters('enableHotPatching')),json('null'),parameters('OSPatchMode'))]"
                         }
                     }
                 },
@@ -297,17 +473,22 @@
                     }
                 }
             },
-            "zones": "[if(contains(variables('regionsWithAvailabilityZones'),parameters('Region')),array(string(parameters('Zone'))),json('null'))]"
+            "zones": "[if(and(greaterOrEquals(length(pickZones('Microsoft.Compute', 'virtualMachines', parameters('Region'),3)),2),greater(parameters('AvailabilityZone'),0)),array(string(parameters('AvailabilityZone'))),json('null'))]"
         },
         {
             "apiVersion": "2021-03-01",
             "type": "Microsoft.Compute/virtualMachines/extensions",
-            "name": "[concat(parameters('virtualMachineName'),'/JsonADDomainExtension')]",
+            "name": "[concat(variables('virtualMachineNames')[copyIndex('ADDomainJoinExtensionLoop')],'/JsonADDomainExtension')]",
             "location": "[parameters('Region')]",
-            "condition": "[not(parameters('IsDomainController'))]",
+            "condition": "[and(equals(bool('true'),parameters('JoinDomain')),not(equals('DomainController',parameters('Function'))),parameters('DeployResources'),greaterOrEquals(length(parameters('DomainJoinUsername')),1))]",
             "dependsOn": [
-                "[concat('Microsoft.Compute/virtualMachines/', parameters('virtualMachineName'))]"
+                "[resourceId('Microsoft.Compute/virtualMachines', variables('virtualMachineNames')[copyIndex('ADDomainJoinExtensionLoop')])]"
             ],
+            "copy": {
+                "count": "[parameters('Count')]",
+                "mode": "Parallel",
+                "name": "ADDomainJoinExtensionLoop"
+            },
             "properties": {
                 "publisher": "Microsoft.Compute",
                 "type": "JsonADDomainExtension",
@@ -324,12 +505,57 @@
                     "Password": "[parameters('DomainJoinPassword')]"
                 }
             }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "apiVersion": "2020-12-01",
+            "name": "[concat(variables('virtualMachineNames')[copyIndex('AddCustomScriptExtensions')],'/CustomScriptExtension')]",
+            "location": "[parameters('Region')]",
+            "condition": "[and(parameters('RunDSCCommands'),parameters('DeployResources'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines/extensions',variables('virtualMachineNames')[copyIndex('AddCustomScriptExtensions')],'JsonADDomainExtension')]"
+            ],
+            "copy": {
+                "count": "[parameters('Count')]",
+                "mode": "Parallel",
+                "name": "AddCustomScriptExtensions"
+            },
+            "properties": {
+                "publisher": "Microsoft.Compute",
+                "type": "CustomScriptExtension",
+                "typeHandlerVersion": "1.0",
+                "autoUpgradeMinorVersion": true,
+                "settings": {},
+                "protectedSettings": {
+                    "commandToExecute": "[variables('vMExtensionCSCommandToExecute')]"
+                }
+            }
         }
     ],
     "outputs": {
-        "adminUsername": {
+        "AdminUsername": {
             "type": "string",
-            "value": "[parameters('adminUsername')]"
+            "value": "[parameters('AdminUsername')]"
+        },
+        "baseSequenceNumbers": {
+            "type": "array",
+            "value": "[variables('baseSequenceNumbersFormatted')]"
+        },
+        "vmNames": {
+            "type": "array",
+            "value": "[variables('virtualMachineNames')]"
+        },
+        "networkInterfaceNames": {
+            "type": "array",
+            "value": "[variables('networkInterfaceNames')]"
+        },
+        "osDiskNames": {
+            "type": "array",
+            "value": "[variables('managedDisk01Names')]"
+        },
+        "dataDiskNames": {
+            "type": "array",
+            "value": "[variables('managedDisk02Names')]"
         }
     }
 }

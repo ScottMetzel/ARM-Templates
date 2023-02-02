@@ -1,0 +1,126 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "loadBalancers_Dev_ILB_ADDS_03_name": {
+            "defaultValue": "Dev-ILB-ADDS-04",
+            "type": "String"
+        },
+        "virtualNetworks_Dev_VNET_Hub_03_externalid": {
+            "defaultValue": "/subscriptions/8ba4ba22-77b6-4573-b28c-8ccc4b7854eb/resourceGroups/Dev-RG-NetworkInfrastructure-04/providers/Microsoft.Network/virtualNetworks/Dev-VNET-Hub-04",
+            "type": "String"
+        },
+        "FrontEndIPAddress": {
+            "type": "string"
+        },
+        "BackendIPAddress": {
+            "type": "string"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Network/loadBalancers",
+            "apiVersion": "2020-11-01",
+            "name": "[parameters('loadBalancers_Dev_ILB_ADDS_03_name')]",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "Standard",
+                "tier": "Regional"
+            },
+            "properties": {
+                "frontendIPConfigurations": [
+                    {
+                        "name": "Frontend-ADDNS-01",
+                        "properties": {
+                            "privateIPAddress": "[parameters('FrontEndIPAddress')]",
+                            "privateIPAllocationMethod": "Static",
+                            "subnet": {
+                                "id": "[concat(parameters('virtualNetworks_Dev_VNET_Hub_03_externalid'), '/subnets/LB01')]"
+                            },
+                            "privateIPAddressVersion": "IPv4"
+                        }
+                    }
+                ],
+                "backendAddressPools": [
+                    {
+                        "name": "Backend-ADDNS-01",
+                        "properties": {
+                            "loadBalancerBackendAddresses": [
+                                {
+                                    "name": "fadc2e32-368c-4e15-82b7-bbdf68481222",
+                                    "properties": {
+                                        "ipAddress": "[parameters('BackendIPAddress')]",
+                                        "virtualNetwork": {
+                                            "id": "[parameters('virtualNetworks_Dev_VNET_Hub_03_externalid')]"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "loadBalancingRules": [
+                    {
+                        "name": "LB-ADDNS-HA-01",
+                        "properties": {
+                            "frontendIPConfiguration": {
+                                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_Dev_ILB_ADDS_03_name')), '/frontendIPConfigurations/Frontend-ADDNS-01')]"
+                            },
+                            "frontendPort": 0,
+                            "backendPort": 0,
+                            "enableFloatingIP": false,
+                            "idleTimeoutInMinutes": 4,
+                            "protocol": "All",
+                            "enableTcpReset": false,
+                            "loadDistribution": "Default",
+                            "disableOutboundSnat": true,
+                            "backendAddressPool": {
+                                "id": "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', parameters('loadBalancers_Dev_ILB_ADDS_03_name'), 'Backend-ADDNS-01')]"
+                            },
+                            "probe": {
+                                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_Dev_ILB_ADDS_03_name')), '/probes/HP-ADDNS-TCP-53-01')]"
+                            }
+                        }
+                    }
+                ],
+                "probes": [
+                    {
+                        "name": "HP-ADDNS-TCP-53-01",
+                        "properties": {
+                            "protocol": "Tcp",
+                            "port": 53,
+                            "intervalInSeconds": 5,
+                            "numberOfProbes": 2
+                        }
+                    }
+                ],
+                "inboundNatRules": [],
+                "outboundRules": [],
+                "inboundNatPools": []
+            }
+        },
+        {
+            "type": "Microsoft.Network/loadBalancers/backendAddressPools",
+            "apiVersion": "2020-11-01",
+            "name": "[concat(parameters('loadBalancers_Dev_ILB_ADDS_03_name'), '/Backend-ADDNS-01')]",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancers_Dev_ILB_ADDS_03_name'))]"
+            ],
+            "properties": {
+                "loadBalancerBackendAddresses": [
+                    {
+                        "name": "fadc2e32-368c-4e15-82b7-bbdf68481222",
+                        "properties": {
+                            "ipAddress": "[parameters('BackendIPAddress')]",
+                            "virtualNetwork": {
+                                "id": "[parameters('virtualNetworks_Dev_VNET_Hub_03_externalid')]"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}

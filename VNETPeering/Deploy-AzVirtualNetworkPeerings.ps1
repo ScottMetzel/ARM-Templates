@@ -1,8 +1,16 @@
 [System.String]$NowString = Get-Date -Format FileDateTimeUniversal
 [System.String]$DeploymentName = [System.String]::Concat("CreateVNETPeerings_", $NowString)
-[System.String]$LocalVNETRID = "/subscriptions/8ba4ba22-77b6-4573-b28c-8ccc4b7854eb/resourceGroups/Dev-RG-NetworkInfrastructure-09/providers/Microsoft.Network/virtualNetworks/Dev-VNET-Hub-09"
+[System.String]$LocalVNETRID = ""
 [System.String]$LocalVNETResourceGroupName = $LocalVNETRID.SPlit("/")[4]
-$RemoteVirtualNetworkRIDs = (Get-AzVirtualNetwork | Where-Object -FilterScript { ($_.Name -like "*Hub*") -and ($_.Id -ne $LocalVNETRID) }).Id
+# [System.Collections.ArrayList]$RemoteVirtualNetworkRIDs = @()
+
+# Get-AzVirtualNetwork | Where-Object -FilterScript { ($_.Name -like "*Hub*") -and ($_.Id -ne $LocalVNETRID) }) | ForEach-Object -Process {
+#     [System.String]$RemoteVirtualNetworkRID = $_.Id
+
+#     $RemoteVirtualNetworkRIDs.Add($RemoteVirtualNetworkRID) | Out-Null
+# }
+
+[System.String[]]$RemoteVirtualNetworkRIDs = ""
 
 [System.Collections.ArrayList]$RemoteVirtualNetworkAllowVNETAccess = @()
 [System.Collections.ArrayList]$RemoteVirtualNetworkAllowForwardedTraffic = @()

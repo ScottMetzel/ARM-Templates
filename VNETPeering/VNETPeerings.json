@@ -107,7 +107,7 @@
             "name": "[concat(variables('localVirtualNetworkName'), '/', parameters('LocalVirtualNetworkPeeringNames')[copyIndex('LocalVNETPeeringLoop')])]",
             "copy": {
                 "count": "[length(parameters('LocalVirtualNetworkPeeringNames'))]",
-                "mode": "Serial",
+                "mode": "Parallel",
                 "name": "LocalVNETPeeringLoop"
             },
             "properties": {
@@ -123,7 +123,7 @@
         {
             "type": "Microsoft.Resources/deployments",
             "apiVersion": "2018-05-01",
-            "name": "[concat('RemoteVNETPeer_',variables('remoteVirtualNetworkResourceGroupNames')[copyIndex('RemoteVNETPeeringLoop')],'_',deployment().name)]",
+            "name": "[concat('RemoteVNETPeer_',deployment().name)]",
             "subscriptionId": "[variables('remoteVirtualNetworkSubscriptionIDs')[copyIndex('RemoteVNETPeeringLoop')]]",
             "resourceGroup": "[variables('remoteVirtualNetworkResourceGroupNames')[copyIndex('RemoteVNETPeeringLoop')]]",
             "copy": {

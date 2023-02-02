@@ -48,7 +48,7 @@ if ($SingleVNETSubscriptionID -eq $GetAzContext.Subscription.Id) {
 }
 else {
     Write-Information -MessageData "Current context does not equal context for local single Virtual Network."
-    Get-AzSubscription -SubscriptionId $SingleVNETSubscriptionID | Set-AzContext
+    Get-AzSubscription -SubscriptionId $SingleVNETSubscriptionID | Set-AzContext | Out-Null
 }
 
 # Get the local VNET and set the formatted location name to be used in the peering name.
@@ -88,7 +88,7 @@ foreach ($RID in $RemoteVirtualNetworkResourceIDs) {
         }
         else {
             Write-Information -MessageData "Current context does not equal context for remote Virtual Network."
-            Get-AzSubscription -SubscriptionId $VNETSubscriptionID | Set-AzContext
+            Get-AzSubscription -SubscriptionId $VNETSubscriptionID | Set-AzContext | Out-Null
         }
 
         # Now set the formatted remote VNET location name.
@@ -123,16 +123,28 @@ foreach ($RID in $RemoteVirtualNetworkResourceIDs) {
     $c++
 }
 
+# Get the current context and set it in case it's not correct.
+Write-Information -MessageData "Getting current context."
+$GetAzContext = Get-AzContext
+
+if ($SingleVNETSubscriptionID -eq $GetAzContext.Subscription.Id) {
+    Write-Information -MessageData "Current context equals desired context for local single Virtual Network."
+}
+else {
+    Write-Information -MessageData "Current context does not equal context for local single Virtual Network."
+    Get-AzSubscription -SubscriptionId $SingleVNETSubscriptionID | Set-AzContext | Out-Null
+}
+
 # Now output the results and exit
 Write-Information -MessageData "Outputting results."
 switch ($Output) {
     "Local" {
         Write-Information -MessageData "Outputting local peering names:"
-        $LocalVNETPeeringNames
+        Write-Output -InputObject $LocalVNETPeeringNames
     }
     "Remote" {
         Write-Information -MessageData "Outputting remote peering names."
-        $RemoteVNETPeeringNames
+        Write-Output -InputObject $RemoteVNETPeeringNames
     }
     default {
         Write-Information -MessageData "Outputting local and remote peering names."
