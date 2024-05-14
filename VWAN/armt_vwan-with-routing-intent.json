@@ -1,0 +1,198 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "VWANName": {
+            "type": "string",
+            "defaultValue": "Lab-VWAN-Core-01"
+        },
+        "VWANRegion": {
+            "type": "string",
+            "defaultValue": "westus2",
+            "allowedValues": [
+                "westus2",
+                "westus3",
+                "westus",
+                "westcentralus",
+                "southcentralus",
+                "northcentralus",
+                "eastus",
+                "eastus2",
+                "centralus"
+            ]
+        },
+        "VWANHubName": {
+            "type": "string",
+            "defaultValue": "Lab-VHUB-Core-01"
+        },
+        "VWANHubRegion": {
+            "type": "string",
+            "defaultValue": "westus2",
+            "allowedValues": [
+                "westus2",
+                "westus3",
+                "westus",
+                "westcentralus",
+                "southcentralus",
+                "northcentralus",
+                "eastus",
+                "eastus2",
+                "centralus"
+            ]
+        },
+        "VWANHubAddressSpace": {
+            "type": "string",
+            "defaultValue": "10.100.0.0/23"
+        },
+        "AzureFirewallName": {
+            "type": "string",
+            "defaultValue": "Lab-AZFW-Core-01"
+        },
+        "AzureFirewallPolicyName": {
+            "type": "string",
+            "defaultValue": "Lab-AZFWP-Core-01"
+        }
+    },
+    "functions": [],
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Network/virtualWans",
+            "apiVersion": "2023-04-01",
+            "name": "[parameters('VWANName')]",
+            "location": "[parameters('VWANRegion')]",
+            "properties": {
+                "allowBranchToBranchTraffic": true,
+                "allowVnetToVnetTraffic": true,
+                "disableVpnEncryption": false,
+                "type": "Standard"
+            }
+        },
+        {
+            "type": "Microsoft.Network/virtualHubs",
+            "apiVersion": "2023-04-01",
+            "name": "[parameters('VWANHubName')]",
+            "location": "[parameters('VWANHubRegion')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualWans',parameters('VWANName'))]"
+            ],
+            "properties": {
+                "addressPrefix": "[parameters('VWANHubAddressSpace')]",
+                "allowBranchToBranchTraffic": true,
+                "hubRoutingPreference": "ASPath",
+                "preferredRoutingGateway": "ExpressRoute",
+                "virtualRouterAutoScaleConfiguration": {
+                    "minCapacity": 2
+                },
+                "virtualWan": {
+                    "id": "[resourceId('Microsoft.Network/virtualWans',parameters('VWANName'))]"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Network/virtualHubs/hubRouteTables",
+            "apiVersion": "2023-04-01",
+            "name": "[concat(parameters('VWANHubName'), '/noneRouteTable')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualHubs', parameters('VWANHubName'))]"
+            ],
+            "properties": {
+                "routes": [],
+                "labels": [
+                    "none"
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/firewallPolicies",
+            "apiVersion": "2023-04-01",
+            "name": "[parameters('AzureFirewallPolicyName')]",
+            "location": "[parameters('VWANHubRegion')]",
+            "properties": {
+                "sku": {
+                    "tier": "Premium"
+                },
+                "threatIntelMode": "Alert"
+            }
+        },
+        {
+            "type": "Microsoft.Network/azureFirewalls",
+            "apiVersion": "2023-04-01",
+            "name": "[parameters('AzureFirewallName')]",
+            "location": "[parameters('VWANHubRegion')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/firewallPolicies',parameters('AzureFirewallPolicyName'))]",
+                "[resourceId('Microsoft.Network/virtualHubs',parameters('VWANHubName'))]"
+            ],
+            "properties": {
+                "firewallPolicy": {
+                    "id": "[resourceId('Microsoft.Network/firewallPolicies',parameters('AzureFirewallPolicyName'))]"
+                },
+                "hubIPAddresses": {
+                    "publicIPs": {
+                        "count": 1
+                    }
+                },
+                "sku": {
+                    "name": "AZFW_Hub",
+                    "tier": "Premium"
+                },
+                "virtualHub": {
+                    "id": "[resourceId('Microsoft.Network/virtualHubs',parameters('VWANHubName'))]"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Network/virtualHubs/routingIntent",
+            "apiVersion": "2023-04-01",
+            "name": "[concat(parameters('VWANHubName'), '/hubRoutingIntent')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualHubs', parameters('VWANHubName'))]",
+                "[resourceId('Microsoft.Network/azureFirewalls', parameters('AzureFirewallName'))]"
+            ],
+            "properties": {
+                "routingPolicies": [
+                    {
+                        "name": "Internet",
+                        "destinations": [
+                            "Internet"
+                        ],
+                        "nextHop": "[resourceId('Microsoft.Network/azureFirewalls', parameters('AzureFirewallName'))]"
+                    },
+                    {
+                        "name": "PrivateTraffic",
+                        "destinations": [
+                            "PrivateTraffic"
+                        ],
+                        "nextHop": "[resourceId('Microsoft.Network/azureFirewalls', parameters('AzureFirewallName'))]"
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/virtualHubs/hubRouteTables",
+            "apiVersion": "2023-11-01",
+            "name": "[concat(parameters('VWANHubName'), '/defaultRouteTable')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualHubs/routingIntent',parameters('VWANHubName'),'hubRoutingIntent')]"
+            ],
+            "properties": {
+                "routes": [
+                    {
+                        "name": "private_traffic",
+                        "destinationType": "CIDR",
+                        "destinations": [
+                            "20.30.40.0/24"
+                        ],
+                        "nextHopType": "ResourceId",
+                        "nextHop": "[resourceId('Microsoft.Network/azureFirewalls', parameters('AzureFirewallName'))]"
+                    }
+                ],
+                "labels": [
+                    "default"
+                ]
+            }
+        }
+    ],
+    "outputs": {}
+}
