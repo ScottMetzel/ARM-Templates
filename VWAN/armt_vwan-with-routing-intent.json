@@ -179,6 +179,26 @@
             "properties": {
                 "routes": [
                     {
+                        "name": "_policy_Internet",
+                        "destinationType": "CIDR",
+                        "destinations": [
+                            "0.0.0.0/0"
+                        ],
+                        "nextHopType": "ResourceId",
+                        "nextHop": "[resourceId('Microsoft.Network/azureFirewalls', parameters('AzureFirewallName'))]"
+                    },
+                    {
+                        "name": "_policy_PrivateTraffic",
+                        "destinationType": "CIDR",
+                        "destinations": [
+                            "10.0.0.0/8",
+                            "172.16.0.0/12",
+                            "192.168.0.0/16"
+                        ],
+                        "nextHopType": "ResourceId",
+                        "nextHop": "[resourceId('Microsoft.Network/azureFirewalls', parameters('AzureFirewallName'))]"
+                    },
+                    {
                         "name": "private_traffic",
                         "destinationType": "CIDR",
                         "destinations": [
