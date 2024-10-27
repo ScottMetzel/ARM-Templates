@@ -12,7 +12,8 @@
             "type": "string",
             "allowedValues": [
                 "Azure",
-                "AzureStack"
+                "AzureStack",
+                "AzureExtended"
             ],
             "defaultValue": "Azure",
             "metadata": {
@@ -315,7 +316,7 @@
     "variables": {
         "vnetId": "[parameters('VirtualNetworkResourceID')]",
         "sequenceNumbers": "[range(parameters('StartingSequenceNumber'), parameters('Count'))]",
-        "platformInitials": "[if(equals(parameters('Platform'), 'Azure'),'A',if(equals(parameters('Platform'),'AzureStack'),'S',json('null')))]",
+        "platformInitials": "[if(equals(parameters('Platform'), 'Azure'),'A',if(equals(parameters('Platform'),'AzureStack'),'S',if(equals(parameters('Platform'),'AzureExtended'),'E',json('null'))))]",
         "deploymentEnvironment": "[if(equals('Production', parameters('DeploymentEnvironment')),0,if(equals('Stage', parameters('DeploymentEnvironment')),1,if(equals('Test', parameters('DeploymentEnvironment')),2,if(equals('Development', parameters('DeploymentEnvironment')),3,if(equals('Lab', parameters('DeploymentEnvironment')),4,json('null'))))))]",
         "deploymentEnvironmentName": "[if(equals('Production', parameters('DeploymentEnvironment')),'Prod',if(equals('Stage', parameters('DeploymentEnvironment')),'Stage',if(equals('Test', parameters('DeploymentEnvironment')),'Test',if(equals('Development', parameters('DeploymentEnvironment')),'Dev',if(equals('Lab', parameters('DeploymentEnvironment')),'Lab',json('null'))))))]",
         "deploymentEnvironmentFormatted": "[format('{0:00}',if(parameters('IsDMZ'),add(10, variables('deploymentEnvironment')),variables('deploymentEnvironment')))]",
@@ -491,7 +492,7 @@
             },
             "properties": {
                 "publisher": "Microsoft.Compute",
-                "type": "JsonADDomainExtension",
+                "type": "cc",
                 "typeHandlerVersion": "1.3",
                 "autoUpgradeMinorVersion": true,
                 "settings": {
@@ -555,7 +556,8 @@
         },
         "dataDiskNames": {
             "type": "array",
-            "value": "[variables('managedDisk02Names')]"
+            "value": "[variables('managedDisk02Names')]",
+            "condition": "[parameters('CreateDataDisk')]"
         }
     }
 }
