@@ -1,0 +1,99 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "PolicyDefinitionName": {
+            "type": "String",
+            "metadata": {
+                "description": "The name of the policy definition."
+            }
+        },
+        "PolicyEffect": {
+            "type": "string",
+            "defaultValue": "Audit",
+            "allowedValues": [
+                "Audit",
+                "DeployIfNotExists",
+                "Disabled"
+            ]
+        },
+        "KeyExpirationInDays": {
+            "type": "int",
+            "defaultValue": 30,
+            "minValue": 1,
+            "maxValue": 365,
+            "metadata": {
+                "description": "The number of days in which the key will expire."
+            }
+        }
+    },
+    "functions": [],
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Authorization/policyDefinitions",
+            "apiVersion": "2021-06-01",
+            "name": "[parameters('PolicyDefinitionName')]",
+            "properties": {
+                "policyRule": {
+                    "if": {
+                        "allOf": [
+                            {
+                                "field": "type",
+                                "equals": "Microsoft.KeyVault.Data/vaults/keys"
+                            },
+                            {
+                                "field": "Microsoft.KeyVault/vaults/keys/attributes.exp",
+                                "notEquals": "[parameters('KeyExpirationInDays')]"
+                            }
+                        ]
+                    },
+                    "then": {
+                        "effect": "[parameters('PolicyEffect')]"
+                    }
+                },
+                "parameters": {
+                    "PolicyDefinitionName": {
+                        "type": "String",
+                        "defaultValue": "[parameters('PolicyDefinitionName')]",
+                        "metadata": {
+                            "description": "The name of the policy definition."
+                        }
+                    },
+                    "PolicyEffect": {
+                        "type": "string",
+                        "defaultValue": "DeployIfNotExists",
+                        "allowedValues": [
+                            "DeployIfNotExists",
+                            "Disabled"
+                        ]
+                    },
+                    "KeyExpirationInDays": {
+                        "type": "int",
+                        "defaultValue": 30,
+                        "minValue": 1,
+                        "maxValue": 365,
+                        "metadata": {
+                            "description": "The number of days in which the key will expire."
+                        }
+                    }
+                },
+                "mode": "Indexed"
+            }
+        }
+    ],
+    "outputs": {
+        "PolicyDefinitionName": {
+            "type": "string",
+            "value": "[parameters('PolicyDefinitionName')]"
+        },
+        "PolicyEffect": {
+            "type": "string",
+            "value": "[parameters('PolicyEffect')]"
+        },
+        "KeyExpirationInDays": {
+            "type": "int",
+            "value": "[parameters('KeyExpirationInDays')]"
+        }
+    }
+}

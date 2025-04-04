@@ -1,0 +1,99 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "PolicyDefinitionName": {
+            "type": "String",
+            "metadata": {
+                "description": "The name of the policy definition."
+            }
+        },
+        "PolicyEffect": {
+            "type": "string",
+            "defaultValue": "DeployIfNotExists",
+            "allowedValues": [
+                "Audit",
+                "DeployIfNotExists",
+                "Disabled"
+            ]
+        },
+        "RotationPolicyExpirationTime": {
+            "type": "int",
+            "defaultValue": 30,
+            "minValue": 1,
+            "maxValue": 365,
+            "metadata": {
+                "description": "The number of days after which the key should be rotated"
+            }
+        }
+    },
+    "functions": [],
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Authorization/policyDefinitions",
+            "apiVersion": "2021-06-01",
+            "name": "[parameters('PolicyDefinitionName')]",
+            "properties": {
+                "policyRule": {
+                    "if": {
+                        "allOf": [
+                            {
+                                "field": "type",
+                                "equals": "Microsoft.KeyVault.Data/vaults/keys"
+                            },
+                            {
+                                "field": "Microsoft.KeyVault/vaults/keys/rotationPolicy.attributes.expiryTime",
+                                "notEquals": "[parameters('RotationPolicyExpirationTime')]"
+                            }
+                        ]
+                    },
+                    "then": {
+                        "effect": "[parameters('PolicyEffect')]"
+                    }
+                },
+                "parameters": {
+                    "PolicyDefinitionName": {
+                        "type": "String",
+                        "defaultValue": "[parameters('PolicyDefinitionName')]",
+                        "metadata": {
+                            "description": "The name of the policy definition."
+                        }
+                    },
+                    "PolicyEffect": {
+                        "type": "string",
+                        "defaultValue": "DeployIfNotExists",
+                        "allowedValues": [
+                            "DeployIfNotExists",
+                            "Disabled"
+                        ]
+                    },
+                    "RotationPolicyExpirationTime": {
+                        "type": "int",
+                        "defaultValue": 30,
+                        "minValue": 1,
+                        "maxValue": 365,
+                        "metadata": {
+                            "description": "The number of days after which the key should be rotated"
+                        }
+                    }
+                },
+                "mode": "Indexed"
+            }
+        }
+    ],
+    "outputs": {
+        "PolicyDefinitionName": {
+            "type": "string",
+            "value": "[parameters('PolicyDefinitionName')]"
+        },
+        "PolicyEffect": {
+            "type": "string",
+            "value": "[parameters('PolicyEffect')]"
+        },
+        "RotationPolicyExpirationTime": {
+            "type": "int",
+            "value": "[parameters('RotationPolicyExpirationTime')]"
+        }
+    }
+}
