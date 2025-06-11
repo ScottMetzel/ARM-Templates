@@ -1,0 +1,141 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "PolicyDefinitionName": {
+            "type": "String",
+            "metadata": {
+                "description": "The name of the policy definition."
+            }
+        },
+        "PolicyEffect": {
+            "type": "string",
+            "defaultValue": "DeployIfNotExists",
+            "allowedValues": [
+                "AuditIfNotExists",
+                "Disabled"
+            ]
+        },
+        "PrivateEndpointNetworkPolicyConfiguration": {
+            "type": "string",
+            "defaultValue": "Enabled",
+            "allowedValues": [
+                "Disabled",
+                "Enabled",
+                "NetworkSecurityGroupEnabled",
+                "RouteTableEnabled"
+            ]
+        },
+        "ExcludedSubnetNames": {
+            "type": "Array",
+            "metadata": {
+                "displayName": "Excluded Subnets",
+                "description": "Array of subnet names that are excluded from this policy"
+            },
+            "defaultValue": [
+                "GatewaySubnet",
+                "AzureFirewallSubnet",
+                "AzureFirewallManagementSubnet",
+                "AzureBastionSubnet"
+            ]
+        }
+    },
+    "functions": [],
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Authorization/policyDefinitions",
+            "apiVersion": "2021-06-01",
+            "name": "[parameters('PolicyDefinitionName')]",
+            "properties": {
+                "policyRule": {
+                    "if": {
+                        "anyOf": [
+                            {
+                                "allOf": [
+                                    {
+                                        "equals": "Microsoft.Network/virtualNetworks",
+                                        "field": "type"
+                                    },
+                                    {
+                                        "count": {
+                                            "field": "Microsoft.Network/virtualNetworks/subnets[*]",
+                                            "where": {
+                                                "allOf": [
+                                                    {
+                                                        "field": "Microsoft.Network/virtualNetworks/subnets[*].privateEndpointNetworkPolicies",
+                                                        "notEquals": "[parameters('PrivateEndpointNetworkPolicyConfiguration')]"
+                                                    },
+                                                    {
+                                                        "field": "Microsoft.Network/virtualNetworks/subnets[*].name",
+                                                        "notIn": "[parameters('ExcludedSubnetNames')]"
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        "notEquals": 0
+                                    }
+                                ]
+                            },
+                            {
+                                "allOf": [
+                                    {
+                                        "field": "type",
+                                        "equals": "Microsoft.Network/virtualNetworks/subnets"
+                                    },
+                                    {
+                                        "field": "name",
+                                        "notIn": "[parameters('ExcludedSubnetNames')]"
+                                    },
+                                    {
+                                        "field": "Microsoft.Network/virtualNetworks/subnets/privateEndpointNetworkPolicies",
+                                        "notEquals": "[parameters('PrivateEndpointNetworkPolicyConfiguration')]"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "then": {
+                        "effect": "[parameters('PolicyEffect')]"
+                    }
+                },
+                "parameters": {
+                    "PolicyDefinitionName": {
+                        "type": "String",
+                        "metadata": {
+                            "description": "The name of the policy definition."
+                        }
+                    },
+                    "PolicyEffect": {
+                        "type": "string",
+                        "defaultValue": "[parameters('PolicyEffect')]",
+                        "allowedValues": [
+                            "DeployIfNotExists",
+                            "Disabled"
+                        ]
+                    },
+                    "PrivateEndpointNetworkPolicyConfiguration": {
+                        "type": "string",
+                        "defaultValue": "[parameters('PrivateEndpointNetworkPolicyConfiguration')]",
+                        "allowedValues": [
+                            "Disabled",
+                            "Enabled",
+                            "NetworkSecurityGroupEnabled",
+                            "RouteTableEnabled"
+                        ]
+                    },
+                    "ExcludedSubnetNames": {
+                        "type": "Array",
+                        "metadata": {
+                            "displayName": "Excluded Subnets",
+                            "description": "Array of subnet names that are excluded from this policy"
+                        },
+                        "defaultValue": "[parameters('ExcludedSubnetNames')]"
+                    }
+                },
+                "mode": "Indexed"
+            }
+        }
+    ],
+    "outputs": {}
+}
