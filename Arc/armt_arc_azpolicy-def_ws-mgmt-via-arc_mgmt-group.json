@@ -1,0 +1,29 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-08-01/managementGroupDeploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+
+    },
+    "functions": [],
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Authorization/policyDefinitions",
+            "apiVersion": "2025-01-01",
+            "name": "Configure_Windows_Arc-enabled_Servers_to_Enroll_in_Windows_Server_Management",
+            "properties": {
+                "displayName": "Configure Windows Arc-enabled Servers to Enroll in Windows Server Management",
+                "policyType": "Custom",
+                "mode": "All",
+                "metadata": {
+                    "category": "Management"
+                },
+                "parameters": {},
+                "policyRule": {
+                    // Define your policy rule here
+                }
+            }
+        }
+    ],
+    "outputs": {}
+}
